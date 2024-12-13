@@ -14,7 +14,7 @@ class _RestClient implements RestClient {
     this.baseUrl,
     this.errorLogger,
   }) {
-    baseUrl ??= 'https://api.api-futebol.com.br';
+    baseUrl ??= 'http://192.168.0.210:3000';
   }
 
   final Dio _dio;
@@ -24,19 +24,19 @@ class _RestClient implements RestClient {
   final ParseErrorLogger? errorLogger;
 
   @override
-  Future<Partida> getPartida(String partida_id) async {
+  Future<List<Partida>> getPartidas() async {
     final _extra = <String, dynamic>{};
     final queryParameters = <String, dynamic>{};
     final _headers = <String, dynamic>{};
     const Map<String, dynamic>? _data = null;
-    final _options = _setStreamType<Partida>(Options(
+    final _options = _setStreamType<List<Partida>>(Options(
       method: 'GET',
       headers: _headers,
       extra: _extra,
     )
         .compose(
           _dio.options,
-          '/v1/partidas/${partida_id}',
+          '/partidas',
           queryParameters: queryParameters,
           data: _data,
         )
@@ -45,10 +45,47 @@ class _RestClient implements RestClient {
           _dio.options.baseUrl,
           baseUrl,
         )));
-    final _result = await _dio.fetch<Map<String, dynamic>>(_options);
-    late Partida _value;
+    final _result = await _dio.fetch<List<dynamic>>(_options);
+    late List<Partida> _value;
     try {
-      _value = Partida.fromJson(_result.data!);
+      _value = _result.data!
+          .map((dynamic i) => Partida.fromJson(i as Map<String, dynamic>))
+          .toList();
+    } on Object catch (e, s) {
+      errorLogger?.logError(e, s, _options);
+      rethrow;
+    }
+    return _value;
+  }
+
+  @override
+  Future<List<Partida>> getPartidasPorTime(String timeNome) async {
+    final _extra = <String, dynamic>{};
+    final queryParameters = <String, dynamic>{};
+    final _headers = <String, dynamic>{};
+    const Map<String, dynamic>? _data = null;
+    final _options = _setStreamType<List<Partida>>(Options(
+      method: 'GET',
+      headers: _headers,
+      extra: _extra,
+    )
+        .compose(
+          _dio.options,
+          '/partidas/${timeNome}',
+          queryParameters: queryParameters,
+          data: _data,
+        )
+        .copyWith(
+            baseUrl: _combineBaseUrls(
+          _dio.options.baseUrl,
+          baseUrl,
+        )));
+    final _result = await _dio.fetch<List<dynamic>>(_options);
+    late List<Partida> _value;
+    try {
+      _value = _result.data!
+          .map((dynamic i) => Partida.fromJson(i as Map<String, dynamic>))
+          .toList();
     } on Object catch (e, s) {
       errorLogger?.logError(e, s, _options);
       rethrow;

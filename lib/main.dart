@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
-import 'package:palpite_campeao/RegistroPalpite.dart';
+import 'package:palpite_campeao/widgets/Bateria.dart';
+import 'package:palpite_campeao/widgets/RegistroPalpite.dart';
 import 'package:palpite_campeao/widgets/ConnState.dart';
 import 'package:palpite_campeao/widgets/Offline.dart';
 import 'package:palpite_campeao/widgets/Online.dart';
 import 'package:palpite_campeao/widgets/StatusConexao.dart';
 
-const desafioRoute = "/home";
+const homeRoute = "/home";
 const palpiteRoute = "/palpite";
-const consultarPalpiteRoute = "/consultarPalpite";
+const bateriaRoute = "/bateria";
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +17,6 @@ void main() {
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  // This widget is the root of your application.
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -26,9 +26,10 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.teal), //deepPurple
         useMaterial3: true,
       ),
-      initialRoute: desafioRoute,
+      initialRoute: homeRoute,
       routes: {
-        desafioRoute: (context) => const Desafio(),
+        homeRoute: (context) => const Home(),
+        bateriaRoute: (context) => const Bateria()
       },
       onGenerateRoute: (settings) {
         if (settings.name == palpiteRoute) {
@@ -47,34 +48,15 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class Desafio extends StatefulWidget {
-  const Desafio({super.key});
+class Home extends StatefulWidget {
+  const Home({super.key});
 
   @override
-  State<Desafio> createState() => _DesafioState();
+  State<Home> createState() => _DesafioState();
 }
 
-class _DesafioState extends State<Desafio> {
+class _DesafioState extends State<Home> {
   StatusConexao _statusConexao = StatusConexao.checking;
-
-  void btPalpite() {
-    Navigator.pushNamed(
-      context,
-      palpiteRoute,
-      arguments: {
-        'partidaId': 1, // Exemplo de ID da partida
-        'timeMandantePalpite': 'Flamengo',
-        'timeVisitantePalpite': 'Palmeiras',
-      },
-    );
-  }
-
-  void btConsultarPalpite(){
-    Navigator.pushNamed(
-      context,
-      consultarPalpiteRoute,
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -94,21 +76,39 @@ class _DesafioState extends State<Desafio> {
             const SizedBox(width: 16),
           ],
         ),
+        drawer: Drawer(
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: [
+              const DrawerHeader(
+                decoration: BoxDecoration(
+                  color: Colors.teal,
+                ),
+                child: Text(
+                  'Menu',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 24,
+                  ),
+                ),
+              ),
+              ListTile(
+                title: const Text('Consultar Bateria'),
+                onTap: (){
+                  Navigator.pushNamed(
+                      context,
+                      bateriaRoute);
+                },
+              ),
+            ],
+          ),
+        ),
         body: Padding(
           padding: const EdgeInsets.all(8.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Expanded(child: _getCurrentWidget()),
-              const SizedBox(height: 20),
-              OutlinedButton(
-                  onPressed: btPalpite,
-                  child: const Text("Registrar Palpite")
-              ),
-              OutlinedButton(
-                  onPressed: btConsultarPalpite,
-                  child: const Text("Consultar Palpite")
-              )
             ],
           ),
         ),

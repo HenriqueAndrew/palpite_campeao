@@ -2,12 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'package:palpite_campeao/widgets/StatusConexao.dart';
 
-// enum StatusConexao {
-//   checking,
-//   offline,
-//   online,
-// }
-
 class ConnState extends StatefulWidget {
   const ConnState({Key? key, this.callback}) : super(key: key);
 

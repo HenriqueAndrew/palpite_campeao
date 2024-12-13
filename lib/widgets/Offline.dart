@@ -1,6 +1,5 @@
+import 'package:drift/drift.dart' as drift;
 import 'package:flutter/material.dart';
-import 'package:palpite_campeao/model/Partida.dart' as model;
-import 'package:palpite_campeao/model/Time.dart' as model;
 import 'package:palpite_campeao/source/local/Database.dart';
 
 class Offline extends StatefulWidget {
@@ -13,46 +12,43 @@ class Offline extends StatefulWidget {
 class _OfflineState extends State<Offline> {
   final database = AppDatabase();
 
-  List<model.Partida> partidas = [];
+  List<PartidaComTimes> partidas = [];
 
   @override
   void initState() {
     super.initState();
-    _loadPartidas();
+    _carregarPartidasOffline();
   }
 
-  Future<void> _loadPartidas() async {
-    final allPartidas = await database.select(database.partidas).get();
+  Future<void> _carregarPartidasOffline() async {
 
-    List<model.Partida> partidasBuscadas = [];
-    for (var partida in allPartidas){
-      final mandante = await (database.select(database.times)
-      ..where((t) => t.time_id.equals(partida.time_mandante))).getSingleOrNull();
-      final visitante = await (database.select(database.times)
-      ..where((t) => t.time_id.equals(partida.time_visitante))).getSingleOrNull();
+    final timeMandanteAlias = database.times.createAlias('mandante');
+    final timeVisitanteAlias = database.times.createAlias('visitante');
 
-      if(mandante != null && visitante != null){
-        partidasBuscadas.add(model.Partida(
-          partida_id: partida.partida_id,
-          time_mandante: model.Time(
-            time_id: mandante.time_id,
-            nome_popular: mandante.nome_popular,
-            sigla: mandante.sigla,
-            escudo: mandante.escudo,
-          ),
-          time_visitante: model.Time(
-            time_id: visitante.time_id,
-            nome_popular: visitante.nome_popular,
-            sigla: visitante.sigla,
-            escudo: visitante.escudo,
-          ),
-          placar_mandante: partida.placar_mandante,
-          placar_visitante: partida.placar_visitante,
-          data_realizacao: partida.data_realizacao,
-          hora_realizacao: partida.hora_realizacao,
-        ));
-      }
-    }
+    final partidasOffline = database.select(database.partidas).join([
+      drift.leftOuterJoin(
+        timeMandanteAlias,
+        timeMandanteAlias.time_id.equalsExp(database.partidas.time_mandante),
+      ),
+      drift.leftOuterJoin(
+        timeVisitanteAlias,
+        timeVisitanteAlias.time_id.equalsExp(database.partidas.time_visitante),
+      ),
+    ]);
+
+    final results = await partidasOffline.get();
+
+    final partidasBuscadas = results.map((row) {
+      final partida = row.readTable(database.partidas);
+      final mandante = row.readTable(timeMandanteAlias);
+      final visitante = row.readTableOrNull(timeVisitanteAlias);
+
+      return PartidaComTimes(
+        partida: partida,
+        mandante: mandante,
+        visitante: visitante,
+      );
+    }).toList();
 
     setState(() {
       partidas = partidasBuscadas;
@@ -62,49 +58,51 @@ class _OfflineState extends State<Offline> {
   @override
   Widget build(BuildContext context) {
     return partidas.isEmpty
-    ? const Center(child: Text("Nenhuma partida salva"))
-    : ListView.separated(
-        itemBuilder: (context, index){
-          final partida = partidas[index];
-          return ListTile(
-            title: Row(
-              children: [
-                //Time mandante
-                Column(
-                  children:[
-                    Image.network(
-                      partida.time_mandante.escudo,
-                      width: 30,
-                      height: 30,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(partida.time_mandante.nome_popular),
-                    Text(partida.placar_mandante.toString()),
-                  ],
-                ),
-                const SizedBox(width: 10),
-                const Text('x'),
-                const SizedBox(width: 10),
-                //Time visitante
-                Column(
-                  children:[
-                    Image.network(
-                      partida.time_visitante.escudo,
-                      width: 30,
-                      height: 30,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(partida.time_visitante.nome_popular),
-                    Text(partida.placar_visitante.toString()),
-                  ],
-                ),
-              ],
+        ? const Center(child: Text("Nenhuma partida salva"))
+        : ListView.separated(
+      itemBuilder: (context, index) {
+        final partidaComTimes = partidas[index];
+        return GestureDetector(
+          onLongPress: (){
+            Navigator.pushNamed(
+                context,
+                '/palpite',
+                arguments: {
+                  'partidaId': partidaComTimes.partida.partida_id,
+                  'timeMandantePalpite': partidaComTimes.mandante?.nome_popular?? '',
+                  'timeVisitantePalpite': partidaComTimes.visitante?.nome_popular ?? '',
+                },
+            );
+          },
+          child: Card(
+            child: ListTile(
+              title: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(partidaComTimes.mandante?.nome_popular ?? ''),
+                  Text("${partidaComTimes.partida.placar_mandante} x ${partidaComTimes.partida.placar_visitante}"),
+                  Text(partidaComTimes.visitante?.nome_popular ?? ''),
+                ],
+              ),
+              subtitle: Text("${partidaComTimes.partida.data_realizacao} às ${partidaComTimes.partida.hora_realizacao}"),
             ),
-            subtitle: Text('${partida.data_realizacao} ${partida.hora_realizacao}'),
-          );
-        },
-        separatorBuilder: (context, index) => const Divider(),
-        itemCount: partidas.length,
+          ),
+        );
+      },
+      separatorBuilder: (context, index) => const Divider(),
+      itemCount: partidas.length,
     );
   }
+}
+
+class PartidaComTimes {
+  final Partida partida;
+  final Time? mandante;
+  final Time? visitante;
+
+  PartidaComTimes({
+    required this.partida,
+    this.mandante,
+    this.visitante,
+  });
 }
